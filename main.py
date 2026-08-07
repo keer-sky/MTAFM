@@ -1,11 +1,11 @@
 import torch
 from torch.utils.data import DataLoader, WeightedRandomSampler
 import os
-
 from dataset import Time_seriesDataset
 from model import Transformer_enc
 from trainer import Trainer
 from data_utils import prepare_datasets
+# Main function entry, illustrating the overall workflow
 
 def main():
     Observe_length = 8
@@ -60,7 +60,6 @@ def main():
         initial_reg_weight=1.0, initial_cls_weight=1.0,
         uncertainty_weighting=True, focus_classes=focus_classes
     )
-
     metrics = trainer.train(train_loader, val_loader, epochs, lr=0.0001)
     return metrics
 
