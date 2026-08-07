@@ -5,6 +5,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 import os
 import json
 
+# The settings related to training are contained in this file. It provides multiple interfaces, and not all of them are used. The choice depends on the situation and it is highly scalable.
 class Trainer:
     def __init__(self, model, device, model_dir, class_weights=None,
                  initial_reg_weight=1.0, initial_cls_weight=1.0,
@@ -31,7 +32,7 @@ class Trainer:
 
         self.train_metrics = {
             'total_loss': [], 'reg_loss': [], 'cls_loss': [],
-            'reg_mae': [], 'cls_accuracy': [], 'reg_weight': [], 'cls_weight': [],
+            'reg_mae': [], 'cls_accuracy': [],
             'focus_class_accuracy': []
         }
         self.val_metrics = {
@@ -59,6 +60,7 @@ class Trainer:
             cls_loss = cls_weight * classification_loss + 0.5 * self.log_vars[1]
             return reg_loss, cls_loss, reg_weight.item(), cls_weight.item()
         else:
+            # can not use
             if epoch < 30:
                 reg_weight = 0.5
                 cls_weight = 1.5
@@ -68,6 +70,7 @@ class Trainer:
             else:
                 reg_weight = 1.0
                 cls_weight = 1.0
+
             return (reg_weight * regression_loss,
                     cls_weight * classification_loss,
                     reg_weight, cls_weight)
@@ -115,6 +118,7 @@ class Trainer:
                 avg_reg_weight += reg_weight
                 avg_cls_weight += cls_weight
 
+                # updata
                 total_loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 optimizer.step()
@@ -128,7 +132,6 @@ class Trainer:
                 train_cls_loss += classification_loss.item()
                 train_reg_mae += reg_mae
                 train_cls_accuracy += cls_accuracy
-
                 if focus_accuracy is not None:
                     train_focus_accuracy += focus_accuracy
                     focus_batch_count += 1
@@ -147,28 +150,21 @@ class Trainer:
                     data = data.to(self.device)
                     regression_target = regression_target.to(self.device)
                     classification_target = classification_target.squeeze().to(self.device)
-
                     regression_pred, classification_pred = self.model(data)
-
                     regression_loss = self.regression_criterion(regression_pred, regression_target)
                     classification_loss = self.classification_criterion(classification_pred, classification_target)
-
                     total_loss = regression_loss + classification_loss
-
                     reg_mae, cls_accuracy, focus_accuracy = self.compute_metrics(
                         regression_pred, regression_target, classification_pred, classification_target
                     )
-
                     val_total_loss += total_loss.item()
                     val_reg_loss += regression_loss.item()
                     val_cls_loss += classification_loss.item()
                     val_reg_mae += reg_mae
                     val_cls_accuracy += cls_accuracy
-
                     if focus_accuracy is not None:
                         val_focus_accuracy += focus_accuracy
                         val_focus_batch_count += 1
-
             avg_train_loss = train_total_loss / len(train_loader)
             avg_val_loss = val_total_loss / len(val_loader)
             avg_train_reg = train_reg_loss / len(train_loader)
@@ -181,28 +177,22 @@ class Trainer:
             avg_val_cls_acc = val_cls_accuracy / len(val_loader)
             avg_reg_weight = avg_reg_weight / len(train_loader)
             avg_cls_weight = avg_cls_weight / len(train_loader)
-
             avg_train_focus_acc = train_focus_accuracy / focus_batch_count if focus_batch_count > 0 else 0
             avg_val_focus_acc = val_focus_accuracy / val_focus_batch_count if val_focus_batch_count > 0 else 0
-
+            # train
             self.train_metrics['total_loss'].append(avg_train_loss)
             self.train_metrics['reg_loss'].append(avg_train_reg)
             self.train_metrics['cls_loss'].append(avg_train_cls)
             self.train_metrics['reg_mae'].append(avg_train_reg_mae)
             self.train_metrics['cls_accuracy'].append(avg_train_cls_acc)
-            self.train_metrics['reg_weight'].append(avg_reg_weight)
-            self.train_metrics['cls_weight'].append(avg_cls_weight)
-            self.train_metrics['focus_class_accuracy'].append(avg_train_focus_acc)
-
+            # val
             self.val_metrics['total_loss'].append(avg_val_loss)
             self.val_metrics['reg_loss'].append(avg_val_reg)
             self.val_metrics['cls_loss'].append(avg_val_cls)
             self.val_metrics['reg_mae'].append(avg_val_reg_mae)
             self.val_metrics['cls_accuracy'].append(avg_val_cls_acc)
             self.val_metrics['focus_class_accuracy'].append(avg_val_focus_acc)
-
             scheduler.step()
-
             epoch_model_path = os.path.join(self.model_dir, f'model_epoch_{epoch + 1:03d}.pth')
             torch.save(self.model.state_dict(), epoch_model_path)
 
@@ -215,7 +205,6 @@ class Trainer:
                 torch.save(self.model.state_dict(), best_model_path)
             else:
                 patience_counter += 1
-
             if epoch % 10 == 0:
                 print(f'Epoch {epoch:3d}/{epochs}: ')
                 print(f'  Train - Loss: {avg_train_loss:.4f} | Reg: {avg_train_reg:.4f} | Cls: {avg_train_cls:.4f} | MAE: {avg_train_reg_mae:.4f} | Acc: {avg_train_cls_acc:.4f}')
@@ -229,15 +218,13 @@ class Trainer:
                 print(f'  LR: {optimizer.param_groups[0]["lr"]:.6f}')
 
             if patience_counter >= patience:
-                print(f"stop epoch {epoch}")
+                print("early_stop_to:",epoch)
                 break
 
         metrics_path = os.path.join(self.model_dir, 'training_metrics.json')
         metrics_data = {'train_metrics': self.train_metrics, 'val_metrics': self.val_metrics}
         with open(metrics_path, 'w') as f:
             json.dump(metrics_data, f, indent=2)
-
         best_model_path = os.path.join(self.model_dir, 'best_model.pth')
         self.model.load_state_dict(torch.load(best_model_path))
-
         return {'train_metrics': self.train_metrics, 'val_metrics': self.val_metrics}
