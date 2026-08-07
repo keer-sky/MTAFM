@@ -6,7 +6,7 @@ Project Structure
 ├── dataset.py # Dataset class: data loading, normalization, augmentation  
 ├── model.py # Model definitions: positional encoding, task interaction, Transformer  
 ├── trainer.py # Trainer: training loop, validation, early stopping, scheduler  
-├── data_utils.py # Data splitting and saving/loading utilities  
+├── data_utils.py # Data loading utilities  
 ├── main.py # Main entry point: integrates all modules and runs training  
 └── README.md # This file  
 
