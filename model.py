@@ -5,7 +5,6 @@ import torch.nn as nn
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout=0.1, max_len=5000):
         super(PositionalEncoding, self).__init__()
-        self.dropout = nn.Dropout(p=dropout)
 
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
@@ -15,49 +14,42 @@ class PositionalEncoding(nn.Module):
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0).transpose(0, 1)
-
         self.register_buffer('pe', pe)
+        self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x):
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
 
 
-class FixedTaskInteractionModule(nn.Module):
+class Multi_task_Interaction_Module(nn.Module):
     def __init__(self, d_model, num_heads=8, dropout=0.1, num_classes=None):
-        super(FixedTaskInteractionModule, self).__init__()
+        super(Multi_task_Interaction_Module, self).__init__()
         self.d_model = d_model
-
         self.cross_attention = nn.MultiheadAttention(
             embed_dim=d_model,
             num_heads=num_heads,
             dropout=dropout,
             batch_first=True
         )
-
         self.feature_fusion = nn.Sequential(
             nn.Linear(d_model * 2, d_model),
             nn.LayerNorm(d_model),
             nn.GELU(),
             nn.Dropout(dropout)
         )
-
         self.reg_gate = nn.Sequential(
             nn.Linear(d_model, d_model),
             nn.Sigmoid()
         )
-
         self.cls_gate = nn.Sequential(
             nn.Linear(d_model, d_model),
             nn.Sigmoid()
         )
-
     def forward(self, reg_features, cls_features):
-        batch_size = reg_features.size(0)
 
         reg_features_seq = reg_features.unsqueeze(1)
         cls_features_seq = cls_features.unsqueeze(1)
-
         reg_enhanced, _ = self.cross_attention(
             query=reg_features_seq,
             key=cls_features_seq,
@@ -76,10 +68,8 @@ class FixedTaskInteractionModule(nn.Module):
         fused_features = self.feature_fusion(
             torch.cat([reg_enhanced, cls_enhanced], dim=-1)
         )
-
         reg_gate = self.reg_gate(fused_features)
         cls_gate = self.cls_gate(fused_features)
-
         reg_final = reg_features + reg_gate * fused_features
         cls_final = cls_features + cls_gate * fused_features
 
@@ -124,7 +114,7 @@ class Transformer_enc(nn.Module):
         self.reg_query = nn.Parameter(torch.randn(1, 1, d_model))
         self.cls_query = nn.Parameter(torch.randn(1, 1, d_model))
 
-        self.task_interaction = FixedTaskInteractionModule(d_model, nhead, dropout, num_classes)
+        self.task_interaction = Multi_task_Interaction_Module(d_model, nhead, dropout, num_classes)
 
         self.regression_head = nn.Sequential(
             nn.Linear(d_model, 128),
@@ -162,11 +152,9 @@ class Transformer_enc(nn.Module):
 
     def forward(self, x, class_labels=None):
         batch_size, seq_len, input_dim = x.shape
-
         x_conv = x.transpose(1, 2)
         x_conv = self.conv_embedding(x_conv)
         x_conv = x_conv.transpose(1, 2)
-
         x_proj = self.input_projection(x_conv) * np.sqrt(self.d_model)
 
         x_pos = x_proj.transpose(0, 1)
