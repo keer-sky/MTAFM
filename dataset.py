@@ -1,4 +1,3 @@
-import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset
@@ -6,6 +5,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 import warnings
 warnings.filterwarnings('ignore')
 
+# Convert the data into a form that is supported by the PyTorch framework.
 class Time_seriesDataset(Dataset):
     def __init__(self, data, sequence_length=8, prediction_length=1,
                  augment_data=True, focus_classes=None,
