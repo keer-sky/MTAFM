@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 import json
-def prepare_datasets(data_dir='data', force_split=False):
+def prepare_datasets(data_dir='data', split=False):
     train_path = os.path.join(data_dir, 'train.csv')
     val_path = os.path.join(data_dir, 'val.csv')
     info_path = os.path.join(data_dir, 'dataset_info.json')
