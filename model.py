@@ -94,7 +94,7 @@ class Transformer_enc(nn.Module):
             nn.GELU(),
         )
 
-        self.input_projection = nn.Linear(d_model, d_model)
+        self.input_dim = nn.Linear(d_model, d_model)
         self.pos_encoder = PositionalEncoding(d_model, dropout)
 
         encoder_layer = nn.TransformerEncoderLayer(
@@ -148,28 +148,24 @@ class Transformer_enc(nn.Module):
         elif isinstance(module, nn.Parameter):
             nn.init.normal_(module, mean=0.0, std=0.02)
 
-    def forward(self, x, class_labels=None):
+    def forward(self, x):
         batch_size, seq_len, input_dim = x.shape
         x_conv = x.transpose(1, 2)
         x_conv = self.conv_embedding(x_conv)
         x_conv = x_conv.transpose(1, 2)
-        x_proj = self.input_projection(x_conv) * np.sqrt(self.d_model)
+        x_dim = self.input_dim(x_conv) * np.sqrt(self.d_model)
 
-        x_pos = x_proj.transpose(0, 1)
+        x_pos = x_dim.transpose(0, 1)
         x_pos = self.pos_encoder(x_pos)
         x_pos = x_pos.transpose(0, 1)
-
-        encoded = self.transformer_encoder(x_pos)
-
+        encoded_feature = self.transformer_encoder(x_pos)
         reg_query = self.reg_query.expand(batch_size, -1, -1)
         cls_query = self.cls_query.expand(batch_size, -1, -1)
 
-        reg_features, _ = self.reg_attention_pool(reg_query, encoded, encoded)
-        cls_features, _ = self.cls_attention_pool(cls_query, encoded, encoded)
-
+        reg_features, _ = self.reg_attention_pool(reg_query, encoded_feature, encoded_feature)
+        cls_features, _ = self.cls_attention_pool(cls_query, encoded_feature, encoded_feature)
         reg_features = reg_features.squeeze(1)
         cls_features = cls_features.squeeze(1)
-
         reg_enhanced, cls_enhanced = self.Multi_task_interaction(reg_features, cls_features)
 
         regression_final_output = self.regression_head(reg_enhanced)
