@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-
+# The overall structure of the model, including the main encoder, decoder and multi-task interaction module
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout=0.1, max_len=5000):
         super(PositionalEncoding, self).__init__()
@@ -72,7 +72,6 @@ class Multi_task_Interaction_Module(nn.Module):
         cls_gate = self.cls_gate(fused_features)
         reg_final = reg_features + reg_gate * fused_features
         cls_final = cls_features + cls_gate * fused_features
-
         return reg_final, cls_final
 
 
@@ -114,7 +113,7 @@ class Transformer_enc(nn.Module):
         self.reg_query = nn.Parameter(torch.randn(1, 1, d_model))
         self.cls_query = nn.Parameter(torch.randn(1, 1, d_model))
 
-        self.task_interaction = Multi_task_Interaction_Module(d_model, nhead, dropout, num_classes)
+        self.Multi_task_interaction = Multi_task_Interaction_Module(d_model, nhead, dropout, num_classes)
 
         self.regression_head = nn.Sequential(
             nn.Linear(d_model, 128),
@@ -136,7 +135,6 @@ class Transformer_enc(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(64, num_classes)
         )
-
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
@@ -172,9 +170,9 @@ class Transformer_enc(nn.Module):
         reg_features = reg_features.squeeze(1)
         cls_features = cls_features.squeeze(1)
 
-        reg_enhanced, cls_enhanced = self.task_interaction(reg_features, cls_features)
+        reg_enhanced, cls_enhanced = self.Multi_task_interaction(reg_features, cls_features)
 
-        regression_output = self.regression_head(reg_enhanced)
-        classification_output = self.classification_head(cls_enhanced)
+        regression_final_output = self.regression_head(reg_enhanced)
+        classification_final_output = self.classification_head(cls_enhanced)
 
-        return regression_output, classification_output
+        return regression_final_output, classification_final_output
