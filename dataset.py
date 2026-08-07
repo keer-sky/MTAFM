@@ -6,13 +6,13 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 import warnings
 warnings.filterwarnings('ignore')
 
-class EnhancedTimeSeriesDataset(Dataset):
-    def __init__(self, df, sequence_length=8, prediction_length=1,
+class Time_seriesDataset(Dataset):
+    def __init__(self, data, sequence_length=8, prediction_length=1,
                  augment_data=True, focus_classes=None,
                  scaler=None, label_encoder=None):
-        self.df = df.copy()
-        self.labels = self.df.iloc[:, 0].values
-        self.time_series = self.df.iloc[:, 1:].values
+        self.data = data.copy()
+        self.labels = self.data.iloc[:, 0].values
+        self.time_series = self.data.iloc[:, 1:].values
         self.augment_data = augment_data
         self.focus_classes = focus_classes
 
@@ -25,11 +25,10 @@ class EnhancedTimeSeriesDataset(Dataset):
 
         self.num_classes = len(self.label_encoder.classes_)
 
-        class_counts = np.bincount(self.encoded_labels)
-
+        class_num = np.bincount(self.encoded_labels)
 
         total_samples = len(self.encoded_labels)
-        self.class_weights = total_samples / (self.num_classes * class_counts)
+        self.class_weights = total_samples / (self.num_classes * class_num)
         self.class_weights = self.class_weights / self.class_weights.sum()
 
         if self.focus_classes is not None:
@@ -51,7 +50,7 @@ class EnhancedTimeSeriesDataset(Dataset):
         self.feature_dim = 1
 
     def __len__(self):
-        return len(self.df)
+        return len(self.data)
 
     def __getitem__(self, idx):
         input_seq = self.scaled_data[idx, :self.sequence_length]
