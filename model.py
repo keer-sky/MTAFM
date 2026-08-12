@@ -75,10 +75,10 @@ class Multi_task_Interaction_Module(nn.Module):
         return reg_final, cls_final
 
 
-class Transformer_enc(nn.Module):
+class Multi_task_forecast(nn.Module):
     def __init__(self, input_dim=1, d_model=128, nhead=8, num_layers=4,
                  num_classes=2, prediction_length=1, dropout=0.2, focus_classes=None):
-        super(Transformer_enc, self).__init__()
+        super(Multi_task_forecast, self).__init__()
 
         self.d_model = d_model
         self.prediction_length = prediction_length
