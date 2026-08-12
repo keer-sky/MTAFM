@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import DataLoader, WeightedRandomSampler
 import os
 from dataset import Time_seriesDataset
-from model import Transformer_enc
+from model import Multi_task_forecast
 from trainer import Trainer
 from data_utils import prepare_datasets
 # Main function entry, illustrating the overall workflow
@@ -43,7 +43,7 @@ def main():
 
     os.makedirs(model_dir, exist_ok=True)
 
-    model = Transformer_enc(
+    model = Multi_task_forecast(
         input_dim=train_dataset.feature_dim,
         d_model=128,
         nhead=8,
