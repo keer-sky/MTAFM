@@ -21,17 +21,21 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
 
-
 class Multi_task_Interaction_Module(nn.Module):
     def __init__(self, d_model, num_heads=8, dropout=0.1, num_classes=None):
         super(Multi_task_Interaction_Module, self).__init__()
         self.d_model = d_model
-        self.cross_attention = nn.MultiheadAttention(
-            embed_dim=d_model,
-            num_heads=num_heads,
-            dropout=dropout,
-            batch_first=True
+        self.reg_to_cls = nn.MultiheadAttention(
+            embed_dim=d_model, num_heads=num_heads,
+            dropout=dropout, batch_first=True
         )
+        self.cls_to_reg = nn.MultiheadAttention(
+            embed_dim=d_model, num_heads=num_heads,
+            dropout=dropout, batch_first=True
+        )
+        self.reg_norm = nn.LayerNorm(d_model)
+        self.cls_norm = nn.LayerNorm(d_model)
+
         self.feature_fusion = nn.Sequential(
             nn.Linear(d_model * 2, d_model),
             nn.LayerNorm(d_model),
@@ -46,24 +50,18 @@ class Multi_task_Interaction_Module(nn.Module):
             nn.Linear(d_model, d_model),
             nn.Sigmoid()
         )
-    def forward(self, reg_features, cls_features):
+    def forward(self, reg_features, cls_features,encoded_feature):
+        reg_tokens = torch.cat([reg_features.unsqueeze(1), encoded_feature], dim=1)
+        cls_tokens = torch.cat([cls_features.unsqueeze(1), encoded_feature], dim=1)
 
-        reg_features_seq = reg_features.unsqueeze(1)
-        cls_features_seq = cls_features.unsqueeze(1)
-        reg_enhanced, _ = self.cross_attention(
-            query=reg_features_seq,
-            key=cls_features_seq,
-            value=cls_features_seq
+        reg_enhanced_seq, reg_weg = self.reg_to_cls(
+            query=reg_tokens, key=cls_tokens, value=cls_tokens
         )
-
-        cls_enhanced, _ = self.cross_attention(
-            query=cls_features_seq,
-            key=reg_features_seq,
-            value=reg_features_seq
+        cls_enhanced_seq, cls_weg = self.cls_to_reg(
+            query=cls_tokens, key=reg_tokens, value=reg_tokens
         )
-
-        reg_enhanced = reg_enhanced.squeeze(1)
-        cls_enhanced = cls_enhanced.squeeze(1)
+        reg_enhanced = self.reg_norm(reg_features + reg_enhanced_seq[:, 0])
+        cls_enhanced = self.cls_norm(cls_features + cls_enhanced_seq[:, 0])
 
         fused_features = self.feature_fusion(
             torch.cat([reg_enhanced, cls_enhanced], dim=-1)
@@ -166,7 +164,9 @@ class Multi_task_forecast(nn.Module):
         cls_features, _ = self.cls_attention_pool(cls_query, encoded_feature, encoded_feature)
         reg_features = reg_features.squeeze(1)
         cls_features = cls_features.squeeze(1)
-        reg_enhanced, cls_enhanced = self.Multi_task_interaction(reg_features, cls_features)
+        reg_enhanced, cls_enhanced = self.Multi_task_interaction(
+            reg_features, cls_features, encoded_feature
+        )
 
         regression_final_output = self.regression_head(reg_enhanced)
         classification_final_output = self.classification_head(cls_enhanced)
