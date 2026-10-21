@@ -211,11 +211,6 @@ class Trainer:
                 if avg_train_focus_acc > 0:
                     print(f'          Focus Acc: {avg_train_focus_acc:.4f}')
                 print(f'  Val   - Loss: {avg_val_loss:.4f} | Reg: {avg_val_reg:.4f} | Cls: {avg_val_cls:.4f} | MAE: {avg_val_reg_mae:.4f} | Acc: {avg_val_cls_acc:.4f}')
-                if avg_val_focus_acc > 0:
-                    print(f'          Focus Acc: {avg_val_focus_acc:.4f}')
-                if self.uncertainty_weighting:
-                    print(f'  Weights - Reg: {avg_reg_weight:.4f} | Cls: {avg_cls_weight:.4f}')
-                print(f'  LR: {optimizer.param_groups[0]["lr"]:.6f}')
 
             if patience_counter >= patience:
                 print("early_stop_to:",epoch)
