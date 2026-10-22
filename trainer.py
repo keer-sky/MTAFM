@@ -82,6 +82,8 @@ class Trainer:
             params = self.model.parameters()
 
         optimizer = optim.AdamW(params, lr=lr, weight_decay=0.01, betas=(0.9, 0.999))
+        # optimizer = optim.Adam(
+        #     params, lr=lr, weight_decay=0.01, betas=(0.9, 0.999))
         scheduler = CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-6)
         best_val_loss = float('inf')
         patience = 25
@@ -196,8 +198,8 @@ class Trainer:
             epoch_model_path = os.path.join(self.model_dir, f'model_epoch_{epoch + 1:03d}.pth')
             torch.save(self.model.state_dict(), epoch_model_path)
 
-            current_val_metric = avg_val_loss * (1 - avg_val_focus_acc * 0.5) if avg_val_focus_acc > 0 else avg_val_loss
-
+            # or suggestion current_val_metric = avg_val_loss * (1 - avg_val_focus_acc * 0.5) if avg_val_focus_acc > 0 else avg_val_loss
+            current_val_metric=avg_val_loss
             if current_val_metric < best_val_loss:
                 best_val_loss = current_val_metric
                 patience_counter = 0
