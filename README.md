@@ -45,6 +45,3 @@ Optimizer: AdamW with cosine annealing learning rate scheduler (initial lr=0.000
 
 Early stopping: Stops if validation loss does not improve for 25 consecutive epochs.  
 
-License  
-
-This project is for research and educational purposes only.  
